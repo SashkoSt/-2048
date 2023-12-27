@@ -50,6 +50,126 @@ class Game:
         scoreRect = scoreSurface.get_rect()
         scoreRect.top = 25
         self.score[1] = [scoreSurface, scoreRect]
+    def addNewTile(self):
+        row, col = randint(0,3), randint(0,3)
+        while self.matrix[row][col] != 0:
+            row, col = randint(0,3), randint(0,3)
+        self.matrix[row][col] = choice([2,2,2,2,4])
+    def Hor_Move(self):
+        for i in range(4):
+            for j in range(3):
+                if self.matrix[i][j+1] == self.matrix[i][j]:
+                    return True
+        return False
+    def Ver_Move(self):
+        for i in range(3):
+            for j in range(4):
+                if self.matrix[i+1][j] == self.matrix[i][j]:
+                    return True
+        return False
+    
+    def gameOver(self):
+        if any(2048 in row for row in self.matrix):
+            self.over = [True, True]
+        if not any(0 in row for row in self.matrix) and not self.Hor_Move() and not self.Ver_Move():
+            self.over = [True, False]
+
+    def updateTiles(self):
+        for i in range(4):
+            for j in range(4):
+               
+                if (x:=self.matrix[i][j]) != 0:
+                    textSurface = self.fontEngine.render(str(x), True, c.CELL_NUMBER_COLORS[x])
+                    textRect = textSurface.get_rect()
+                    textRect.center = self.cells[i][j]['rect'].center
+                    self.cells[i][j]['textRect'] = textRect
+                    self.cells[i][j]['textSurface'] = textSurface
+                elif x == 0:
+                    self.cells[i][j]['textRect'] = None
+                    self.cells[i][j]['textSurface'] = None
+
+    def stack(self):
+        new_matrix = [[0]*4 for _ in range(4)]
+        for i in range(4):
+            position = 0
+            for j in range(4):
+                if self.matrix[i][j] != 0:
+                    new_matrix[i][position] = self.matrix[i][j]
+                    position += 1
+        self.matrix = new_matrix
+    
+    def combine(self):
+        for i in range(4):
+            for j in range(3):
+                x = self.matrix[i][j]
+                if x != 0 and x == self.matrix[i][j+1]:
+                    self.matrix[i][j] *= 2
+                    self.matrix[i][j+1] = 0
+                    self.score[0] += self.matrix[i][j]
+        
+    def reverse(self):
+        new_matrix = []
+        for row in self.matrix:
+            new_matrix.append(row[::-1])
+        self.matrix = new_matrix
+    
+    def transpose(self):
+        new_matrix = [[0]*4 for _ in range(4)]
+        for i in range(4):
+            for j in range(4):
+                new_matrix[j][i] = self.matrix[i][j]
+        self.matrix = new_matrix
+    
+    def scs(self):
+        oldmatrix = self.matrix
+        self.stack()
+        self.combine()
+        self.stack()
+        return oldmatrix
+
+    def aug(self):
+        self.addNewTile()
+        self.updateTiles()
+        self.gameOver()
+
+    def left(self):
+        oldmatrix = self.scs()
+        if oldmatrix == self.matrix:
+            return
+        self.aug()
+    
+    def right(self):
+        oldmatrix = self.matrix
+        self.reverse()
+        self.scs()
+        self.reverse()
+        if oldmatrix == self.matrix:
+            return
+        self.aug()
+    
+    def up(self):
+        oldmatrix = self.matrix
+        self.transpose()
+        self.scs()
+        self.transpose()
+        if oldmatrix == self.matrix:
+            return
+        self.aug()
+
+    def down(self):
+        oldmatrix =self.matrix
+        self.transpose()
+        self.reverse()
+        self.scs()
+        self.reverse()
+        self.transpose()
+        if oldmatrix == self.matrix:
+            return
+        self.aug()
+    
+    def reset(self):
+        self.__init__(self.window)
+
 def draw(window, matrix, cells, score, over):
     window.fill(c.GRID_COLOR)
     #Рахунок
@@ -71,9 +191,15 @@ def draw(window, matrix, cells, score, over):
                 pygame.draw.rect(window, c.EMPTY_CELL_COLOR, cell['rect'])
     #Закінчення гри
     if over[0] and over[1]:
-        pass
+        gameOverSurface = pygame.font.SysFont(c.SCORE_LABEL_FONT, 25).render('Гру пройдено!. Натисніть Ctrl + q, щоб почати знову', True, (0,0,0))
+        gameOverRect = gameOverSurface.get_rect()
+        gameOverRect.center = (WIDTH//2, HEIGHT//2)
+        window.blit(gameOverSurface, gameOverRect)
     if over[0] and not over[1]:
-        pass
+        gameOverSurface = pygame.font.SysFont(c.SCORE_LABEL_FONT, 25).render('Ви програли. Натисніть Ctrl + q, щоб почати знову', True, (0,0,0))
+        gameOverRect = gameOverSurface.get_rect()
+        gameOverRect.center = (WIDTH//2, HEIGHT//2)
+        window.blit(gameOverSurface, gameOverRect)
     pygame.display.update()
 
 def main():
@@ -89,7 +215,17 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
                 break
-
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT:
+                    game.left()
+                if event.key == pygame.K_RIGHT:
+                    game.right()
+                if event.key == pygame.K_UP:
+                    game.up()
+                if event.key == pygame.K_DOWN:
+                    game.down()
+                if event.key == pygame.K_q and pygame.key.get_mods() & pygame.KMOD_CTRL and game.over:
+                    game.reset()
     pygame.quit()
     quit()
 
