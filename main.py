@@ -5,6 +5,7 @@ import colors as c
 WIDTH, HEIGHT = 400, 500
 FPS = 30
 
+
 pygame.init()
 window = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('2048 Game')
